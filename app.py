@@ -18,7 +18,9 @@ user_emails = st.text_area("Paste your manual tasks/emails here:", height=200)
 
 # --- THE LOGIC (Direct API Call) ---
 def call_gemini_direct(prompt, key):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key={key}"
+    # NEW / FIXED LINE:
+url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
+   
     headers = {"Content-Type": "application/json"}
     data = {
         "contents": [{"parts": [{"text": prompt}]}]
