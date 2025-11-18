@@ -18,16 +18,18 @@ user_emails = st.text_area("Paste your manual tasks/emails here:", height=200)
 
 # --- THE LOGIC (Direct API Call) ---
 def call_gemini_direct(prompt, key):
-    # NEW / FIXED LINE:
-url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
-   
+    # FIX: This URL line is now indented correctly (4 spaces)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
     headers = {"Content-Type": "application/json"}
     data = {
         "contents": [{"parts": [{"text": prompt}]}]
     }
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 200:
-        return response.json()['candidates'][0]['content']['parts'][0]['text']
+        try:
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        except KeyError:
+            return "Error: Unexpected response format from Google."
     else:
         return f"Error: {response.text}"
 
