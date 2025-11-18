@@ -3,57 +3,92 @@ import requests
 import json
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Gemini Workflow Architect", page_icon="🤖")
+st.set_page_config(page_title="Gemini Workflow Architect", page_icon="🤖", layout="centered")
 
 st.title("🤖 AI Workflow Architect")
-st.caption("Powered by Gemini 3.0 Logic (Direct API)")
+st.caption("Powered by Gemini (Multi-Model Fallback System)")
 
 # --- SIDEBAR ---
 with st.sidebar:
+    st.header("Settings")
     api_key = st.text_input("Enter Gemini API Key", type="password")
-    st.info("Using Direct API Mode (No SDK)")
+    st.info("System Status: Ready")
 
 # --- MAIN INPUT ---
-user_emails = st.text_area("Paste your manual tasks/emails here:", height=200)
+user_emails = st.text_area(
+    "Paste your manual tasks or email examples here:", 
+    height=200,
+    placeholder="Example: I get emails about invoices, I download them, rename them, and upload to Drive..."
+)
 
-# --- THE LOGIC (Direct API Call) ---
-def call_gemini_direct(prompt, key):
-    # FIX: This URL line is now indented correctly (4 spaces)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "contents": [{"parts": [{"text": prompt}]}]
-    }
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 200:
+# --- THE ROBUST LOGIC ---
+def call_gemini_robust(prompt, key):
+    # LIST OF MODELS TO TRY (If one fails, it tries the next)
+    models_to_try = [
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-1.5-flash-latest",
+        "gemini-pro"
+    ]
+    
+    last_error = ""
+
+    for model_name in models_to_try:
         try:
-            return response.json()['candidates'][0]['content']['parts'][0]['text']
-        except KeyError:
-            return "Error: Unexpected response format from Google."
-    else:
-        return f"Error: {response.text}"
+            # Construct the URL for this specific model
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+            headers = {"Content-Type": "application/json"}
+            data = {"contents": [{"parts": [{"text": prompt}]}]}
+            
+            # Make the request
+            response = requests.post(url, headers=headers, json=data)
+            
+            # If successful (Code 200), return the text immediately
+            if response.status_code == 200:
+                return response.json()['candidates'][0]['content']['parts'][0]['text']
+            else:
+                # If failed, log error and continue to next model in list
+                last_error = f"Model {model_name} failed ({response.status_code}). Switching..."
+                continue
+                
+        except Exception as e:
+            last_error = str(e)
+            continue
+            
+    # If loop finishes and nothing worked:
+    return f"All models failed. Please check your API Key. Last error: {last_error}"
 
+# --- THE SYSTEM PROMPT ---
 SYSTEM_PROMPT = """
-You are an AI Automation Assistant. Analyze the user's input and output a workflow plan.
-1. Summary of patterns.
-2. Manual tasks list.
-3. Automation ideas (n8n/Zapier).
-4. Detailed Step-by-step workflow.
-User Input:
+You are an expert AI Automation Consultant.
+Your goal: Convert the user's messy description of manual work into a structured automation workflow.
+
+Response Structure:
+1. THE PAIN: Summarize what they are doing manually in 1 sentence.
+2. THE FIX: List 3 steps to automate this.
+3. THE BLUEPRINT: Create a technical workflow (Trigger -> Action -> Action) for tools like n8n or Zapier.
+
+USER INPUT TO ANALYZE:
 """
 
+# --- EXECUTION ---
 if st.button("🚀 Architect Workflow", type="primary"):
     if not api_key:
-        st.error("Please enter API Key.")
+        st.error("Please enter your API Key in the sidebar.")
     elif not user_emails:
-        st.warning("Please enter text.")
+        st.warning("Please paste some text to analyze.")
     else:
-        with st.spinner("Architecting..."):
-            try:
-                # Combine prompt and input
-                full_prompt = SYSTEM_PROMPT + user_emails
-                result = call_gemini_direct(full_prompt, api_key)
-                st.markdown("---")
+        with st.spinner("Analyzing workflow patterns..."):
+            # Combine instructions with user input
+            full_prompt = SYSTEM_PROMPT + "\n" + user_emails
+            
+            # Run the robust function
+            result = call_gemini_robust(full_prompt, api_key)
+            
+            # Display results
+            st.markdown("---")
+            if "All models failed" in result:
+                st.error(result)
+            else:
+                st.success("Blueprint Generated Successfully")
                 st.markdown(result)
-            except Exception as e:
-                st.error(f"Connection error: {e}")
