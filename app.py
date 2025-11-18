@@ -19,7 +19,7 @@ user_emails = st.text_area("Paste your manual tasks/emails here:", height=200)
 # --- THE LOGIC (Direct API Call) ---
 def call_gemini_direct(prompt, key):
     # FIX: Using the "-latest" alias which is more robust on the beta endpoint
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-latest:generateContent?key={key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={key}"
     headers = {"Content-Type": "application/json"}
     data = {
         "contents": [{"parts": [{"text": prompt}]}]
