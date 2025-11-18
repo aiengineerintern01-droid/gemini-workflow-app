@@ -13,7 +13,7 @@ if test_input and api_key:
     st.info("Attempting to connect to Google...")
     
     # We use the most standard URL possible
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={api_key}"
     
     headers = {"Content-Type": "application/json"}
     data = {"contents": [{"parts": [{"text": "Hello, are you there?"}]}]}
