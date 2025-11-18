@@ -79,7 +79,7 @@ if st.button("🚀 Architect Workflow", type="primary"):
             genai.configure(api_key=api_key)
             # Using the latest stable model to execute the logic
             model = genai.GenerativeModel(
-                model_name="gemini-1.5-pro-latest", 
+                model_name="gemini-2.5-pro", 
                 system_instruction=SYSTEM_PROMPT
             )
             
