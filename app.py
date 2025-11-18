@@ -1,35 +1,63 @@
 import streamlit as st
 import requests
+import json
 
-st.set_page_config(page_title="Debug Mode", page_icon="🛠️")
-st.title("🛠️ Connection Debugger")
+# --- PAGE CONFIGURATION ---
+st.set_page_config(page_title="Gemini Workflow Architect", page_icon="🤖")
 
-# 1. INPUTS
-api_key = st.text_input("Paste New API Key", type="password")
-test_input = st.button("Test Connection")
+st.title("🤖 AI Workflow Architect")
+st.caption("Powered by Gemini 3.0 Logic (Direct API)")
 
-# 2. THE RAW TEST
-if test_input and api_key:
-    st.info("Attempting to connect to Google...")
-    
-    # We use the most standard URL possible
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={api_key}"
-    
+# --- SIDEBAR ---
+with st.sidebar:
+    api_key = st.text_input("Enter Gemini API Key", type="password")
+    st.info("Using Direct API Mode (No SDK)")
+
+# --- MAIN INPUT ---
+user_emails = st.text_area("Paste your manual tasks/emails here:", height=200)
+
+# --- THE LOGIC (Direct API Call) ---
+def call_gemini_direct(prompt, key):
+    # FIX: Using the "-latest" alias which is more robust on the beta endpoint
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-latest:generateContent?key={key}"
     headers = {"Content-Type": "application/json"}
-    data = {"contents": [{"parts": [{"text": "Hello, are you there?"}]}]}
+    data = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    response = requests.post(url, headers=headers, json=data)
     
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        
-        # 3. DIAGNOSTIC OUPUT
-        st.write(f"**HTTP Status Code:** {response.status_code}")
-        
-        if response.status_code == 200:
-            st.success("✅ SUCCESS! The key works.")
-            st.json(response.json())
-        else:
-            st.error("❌ FAILURE. Here is the exact error from Google:")
-            st.code(response.text, language="json")
-            
-    except Exception as e:
-        st.error(f"Python Error: {e}")
+    if response.status_code == 200:
+        try:
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        except KeyError:
+            return "Error: Unexpected response format from Google."
+    else:
+        # If the flash model fails, try the older stable 'gemini-pro' as a fallback
+        if response.status_code == 404:
+             return "Error: Model not found. Please check your API key permissions."
+        return f"Error {response.status_code}: {response.text}"
+
+SYSTEM_PROMPT = """
+You are an AI Automation Assistant. Analyze the user's input and output a workflow plan.
+1. Summary of patterns.
+2. Manual tasks list.
+3. Automation ideas (n8n/Zapier).
+4. Detailed Step-by-step workflow.
+User Input:
+"""
+
+if st.button("🚀 Architect Workflow", type="primary"):
+    if not api_key:
+        st.error("Please enter API Key.")
+    elif not user_emails:
+        st.warning("Please enter text.")
+    else:
+        with st.spinner("Architecting..."):
+            try:
+                # Combine prompt and input
+                full_prompt = SYSTEM_PROMPT + user_emails
+                result = call_gemini_direct(full_prompt, api_key)
+                st.markdown("---")
+                st.markdown(result)
+            except Exception as e:
+                st.error(f"Connection error: {e}")
